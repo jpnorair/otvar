@@ -58,24 +58,10 @@ typedef struct {
 
 static struct varstruct* sub_findvar(otvar_t* otvar, const char* name) {
     struct varstruct* item;
-    struct varstruct* base;
-    
-    //base = otvar->base;
     HASH_FIND_STR(otvar->base, name, item);
-    //HASH_FIND_STR(base, name, item);
     return item;
 }
 
-static void sub_del(struct varstruct* input) {
-    struct varstruct* output;
-    if (input != NULL) {
-        HASH_DEL(input, output);
-        if (output->size != 0) {
-            free(output->val.pointer);
-        }
-        free(output);
-    }
-}
 
 static void* sub_get_pointer(otvar_handle_t handle, const char* varname) {
     struct varstruct* var;
@@ -147,7 +133,6 @@ void otvar_deinit(otvar_handle_t handle) {
 
 int otvar_del(otvar_handle_t handle, const char* varname) {
     struct varstruct* input;
-    struct varstruct* output;
     otvar_t* otvar;
     int dels = 0;
     
@@ -162,11 +147,11 @@ int otvar_del(otvar_handle_t handle, const char* varname) {
     
     input = sub_findvar(otvar, varname);
     if (input != NULL) {
-        HASH_DEL(input, output);
-        if (output->size != 0) {
-            free(output->val.pointer);
+        HASH_DEL(otvar->base, input);
+        if (input->size != 0) {
+            free(input->val.pointer);
         }
-        free(output);
+        free(input);
         dels++;
     }
     
@@ -176,7 +161,6 @@ int otvar_del(otvar_handle_t handle, const char* varname) {
 
 int otvar_add(otvar_handle_t handle, const char* varname, VAR_Type type, ...) {
     struct varstruct* input;
-    struct varstruct* base;
     otvar_t* otvar;
     va_list ap;
     void* datafield;
@@ -186,18 +170,18 @@ int otvar_add(otvar_handle_t handle, const char* varname, VAR_Type type, ...) {
     }
     
     otvar = handle;
-//     if (otvar->base == NULL) {
-//         return -2;
-//     }
-    
     input = sub_findvar(otvar, varname);
     if (input != NULL) {
-        sub_del(input);
+        HASH_DEL(otvar->base, input);
+        if (input->size != 0) {
+            free(input->val.pointer);
+        }
+        free(input);
     }
     
     input = malloc(sizeof(struct varstruct));
     if (input == NULL) {
-        return -4;
+        return -2;
     }
     
     input->type = type;
@@ -211,7 +195,6 @@ int otvar_add(otvar_handle_t handle, const char* varname, VAR_Type type, ...) {
         case VAR_String: {
             datafield           = (void*)va_arg(ap, const char*);
             input->size         = strlen( (char*)datafield ) + 1;
-            input->val.pointer  = malloc(input->size);
         } break;
         case VAR_Int: {
             input->size         = 0;
@@ -219,7 +202,7 @@ int otvar_add(otvar_handle_t handle, const char* varname, VAR_Type type, ...) {
         } break;
         case VAR_Float: {
             input->size         = 0;
-            input->val.integer  = va_arg(ap, double);
+            input->val.number   = va_arg(ap, double);
         } break;
     }
     
@@ -227,11 +210,16 @@ int otvar_add(otvar_handle_t handle, const char* varname, VAR_Type type, ...) {
     switch (type) {
         case VAR_Binary:
         case VAR_String:
-            input->val.pointer  = malloc(input->size);
-            if (input->val.pointer == NULL) {
-                goto otvar_add_TERM;
+            if (input->size > 0) {
+                input->val.pointer  = malloc(input->size);
+                if (input->val.pointer == NULL) {
+                    goto otvar_add_TERM;
+                }
+                memcpy(input->val.pointer, datafield, input->size);
             }
-            memcpy(input->val.pointer, datafield, input->size);
+            else {
+                input->val.pointer = NULL;
+            }
             break;
         
         case VAR_Int:
