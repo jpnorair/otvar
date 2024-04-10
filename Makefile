@@ -22,6 +22,11 @@ THISSYSTEM	?= $(shell uname -s)
 VERSION     ?= 1.0.0
 PACKAGEDIR  ?= ./../_hbpkg/$(THISMACHINE)/otvar.$(VERSION)
 
+EXT_INC     ?= 
+EXT_LIBINC  ?= 
+EXT_LIBFLAGS?=
+EXT_LIBS    ?= 
+
 ifeq ($(THISSYSTEM),Darwin)
 # Mac can't do conditional selection of static and dynamic libs at link time.
 #	PRODUCTS := libotvar.dylib libotvar.a
@@ -45,7 +50,7 @@ OBJEXT      := o
 
 #CFLAGS      ?= -std=gnu99 -O -g -Wall
 CFLAGS      ?= -std=gnu99 -O3 -fPIC
-LIB         := $(EXT_LIB)
+LIB         := $(EXT_LIBINC) $(EXT_LIBFLAGS)
 INC         := -I$(INCDIR) $(EXT_INC)
 INCDEP      := -I$(INCDIR) $(EXT_INC)
 
